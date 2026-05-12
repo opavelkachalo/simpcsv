@@ -4,5 +4,5 @@ CFLAGS = -Wall -g
 simpcsv: simpcsv.c
 	$(CC) $(CFLAGS) $< -o $@
 
-tags: %.c %.h
+tags: simpcsv.c
 	ctags -R .
