@@ -6,3 +6,6 @@ simpcsv: simpcsv.c
 
 tags: simpcsv.c
 	ctags -R .
+
+test:
+	./tests/test.sh
