@@ -358,11 +358,12 @@ cleanup:
 	return res;
 }
 
-void calculate_table(struct table *csv_table)
+int calculate_table(struct table *csv_table)
 {
-	int i, j, nrows, ncols;
+	int i, j, nrows, ncols, res;
 	char *cell;
 
+	res = 0;
 	nrows = csv_table->nrows;
 	ncols = csv_table->ncols;
 	csv_table->visited = calloc(csv_table->nrows * csv_table->ncols,
@@ -370,12 +371,14 @@ void calculate_table(struct table *csv_table)
 	for(i = 0; i < nrows; i++) {
 		for(j = 0; j < ncols; j++) {
 			cell = csv_table->values.items[i][j];
-			if(*cell == '=' && !csv_table->visited[i*ncols + j]) {
-				csv_table->visited[i*ncols + j] = 1;
-				calculate_expr(csv_table, cell, i, j);
-			}
+			if(*cell != '=' || csv_table->visited[i*ncols + j])
+				continue;
+			csv_table->visited[i*ncols + j] = 1;
+			if(calculate_expr(csv_table, cell, i, j) == -1)
+				res = -1;
 		}
 	}
+	return res;
 }
 
 void print_table(struct table *csv_table)
@@ -420,9 +423,9 @@ int main(int argc, char **argv)
 		fclose(csv_file);
 		return 1;
 	}
-	calculate_table(&csv_table);
+	res = calculate_table(&csv_table);
 	print_table(&csv_table);
 	free_table(&csv_table);
 	fclose(csv_file);
-	return 0;
+	return res;
 }
