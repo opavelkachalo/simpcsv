@@ -122,7 +122,10 @@ int is_num(const char *str)
 {
 	const char *p;
 
-	for(p = str; *p; p++)
+	p = str;
+	if(*p == '-')
+		p = str + 1;
+	for(; *p; p++)
 		if(*p < '0' || *p > '9')
 			return 0;
 	return 1;
