@@ -1,0 +1,10 @@
+,Hello,World,Mul,Div,Sum,Min
+1,1,1,=Hello1*World1,=Mul1/Hello1,=Div1+Hello1,=Sum1-Hello1
+2,2,2,=Hello2*World2,=Mul2/Hello2,=Div2+Hello2,=Sum2-Hello2
+3,3,3,=Hello3*World3,=Mul3/Hello3,=Div3+Hello3,=Sum3-Hello3
+4,4,4,=Hello4*World4,=Mul4/Hello4,=Div4+Hello4,=Sum4-Hello4
+5,5,5,=Hello5*World5,=Mul5/Hello5,=Div5+Hello5,=Sum5-Hello5
+6,6,6,=Hello6*World6,=Mul6/Hello6,=Div6+Hello6,=Sum6-Hello6
+7,7,7,=Hello7*World7,=Mul7/Hello7,=Div7+Hello7,=Sum7-Hello7
+8,8,8,=Hello8*World8,=Mul8/Hello8,=Div8+Hello8,=Sum8-Hello8
+9,9,9,=Hello9*World9,=Mul9/Hello9,=Div9+Hello9,=Sum9-Hello9
