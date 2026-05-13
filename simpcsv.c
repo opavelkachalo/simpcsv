@@ -23,8 +23,6 @@
 
 #define LONG_NUM_LEN 21
 
-enum ops { add, sub, mult, divi };
-
 struct arr_of_strs {
 	int size, capacity;
 	char **items;
