@@ -21,7 +21,7 @@
 	(da)->capacity = 0;\
 } while(0)
 
-#define LONG_NUM_LEN 20
+#define LONG_NUM_LEN 21
 
 enum ops { add, sub, mult, divi };
 
@@ -118,11 +118,23 @@ int create_header(struct arr_of_strs *row, struct table *csv_table)
 	return 0;
 }
 
+int is_num(const char *str)
+{
+	const char *p;
+
+	for(p = str; *p; p++)
+		if(*p < '0' || *p > '9')
+			return 0;
+	return 1;
+}
+
 int read_row(struct arr_of_strs *row, struct table *csv_table)
 {
 	int row_size;
 	char **tmp;
 
+	if(!is_num(row->items[0]))
+		return -1;
 	csv_table->nrows++;
 	DA_APPEND(&csv_table->index, row->items[0]);
 	row_size = csv_table->ncols * sizeof(**csv_table->values.items);
@@ -146,7 +158,7 @@ int read_csv(FILE *csv_file, struct table *csv_table, char delim)
 			res = create_header(&row, csv_table);
 			free(row.items[0]);
 		} else {
-			if(row.size > csv_table->ncols + 1) {
+			if(row.size != csv_table->ncols + 1) {
 				free_arr_of_strs(&row);
 				free(line_str);
 				return -1;
@@ -172,16 +184,6 @@ void print_entire_file(FILE *file)
 	fseek(file, 0, SEEK_SET);
 	while(fgets(tmp_buf, TMP_BUF_SIZE, file) != NULL)
 		fputs(tmp_buf, stdout);
-}
-
-int is_num(const char *str)
-{
-	const char *p;
-
-	for(p = str; *p; p++)
-		if(*p < '0' || *p > '9')
-			return 0;
-	return 1;
 }
 
 int find_num(const char *str)
