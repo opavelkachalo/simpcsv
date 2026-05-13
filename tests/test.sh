@@ -1,5 +1,7 @@
 #/bin/sh
 
+cd $(dirname $0)
+
 flag="f"
 if [ $# -ge 1 ]; then
 	flag=$1
@@ -39,3 +41,5 @@ echo failed $n_fail tests
 if [ -e tmp ]; then
 	rm tmp
 fi
+
+cd - &>/dev/null
