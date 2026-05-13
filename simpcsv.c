@@ -402,18 +402,99 @@ void print_table(struct table *csv_table)
 	}
 }
 
+void print_n_chars(char c, int n)
+{
+	int i;
+	for(i = 0; i < n; i++)
+		putchar(c);
+}
+
+struct dints {
+	int size, capacity, *items;
+};
+
+void count_col_lengths(struct table *csv_table, struct dints *lengths)
+{
+	int max, curlen, i, j;
+
+	max = 0;
+	for(i = 0; i < csv_table->index.size; i++) {
+		curlen = strlen(csv_table->index.items[i]);
+		if(curlen > max)
+			max = curlen;
+	}
+	DA_APPEND(lengths, max);
+	for(i = 0; i < csv_table->ncols; i++) {
+		max = strlen(csv_table->header.items[i]);
+		for(j = 0; j < csv_table->nrows; j++) {
+			curlen = strlen(csv_table->values.items[j][i]);
+			if(curlen > max)
+				max = curlen;
+		}
+		DA_APPEND(lengths, max);
+	}
+}
+
+void print_horiz_line(struct dints *lengths)
+{
+	int i;
+
+	putchar('+');
+	for(i = 0; i < lengths->size; i++) {
+		print_n_chars('-', lengths->items[i]);
+		putchar('+');
+	}
+	putchar('\n');
+}
+
+void print_pretty_header(struct table *csv_table, struct dints *lengths)
+{
+	int i;
+
+	print_horiz_line(lengths);
+	putchar('|');
+	print_n_chars(' ', lengths->items[0]);
+	putchar('|');
+	for(i = 1; i < lengths->size; i++)
+		printf("%*s|", lengths->items[i],
+				csv_table->header.items[i-1]);
+	putchar('\n');
+	print_horiz_line(lengths);
+}
+
+void print_pretty_table(struct table *csv_table)
+{
+	int i, j;
+	struct dints lengths = {0};
+
+	count_col_lengths(csv_table, &lengths);
+	print_pretty_header(csv_table, &lengths);
+	for(i = 0; i < csv_table->nrows; i++) {
+		printf("|%*s|", lengths.items[0],
+				csv_table->index.items[i]);
+		for(j = 0; j < csv_table->ncols; j++) {
+			printf("%*s%s", lengths.items[j+1],
+				csv_table->values.items[i][j],
+				j != csv_table->ncols - 1 ? "|" : "|\n");
+		}
+		print_horiz_line(&lengths);
+	}
+	free(lengths.items);
+}
+
 int main(int argc, char **argv)
 {
-	int res;
+	int res, pretty;
 	char *csv_path;
 	FILE *csv_file;
 	struct table csv_table = {0};
 
 	if(argc < 2) {
-		fprintf(stderr, "Usage: %s <csv_path>\n", *argv);
+		fprintf(stderr, "Usage: %s <csv_path> [-p]\n", *argv);
 		fprintf(stderr, "You didn't provide a csv path!\n");
 		return 1;
 	}
+	pretty = argc == 3 && strcmp(argv[2], "-p") == 0;
 	csv_path = argv[1];
 	csv_file = fopen(csv_path, "r");
 	if(!csv_file) {
@@ -427,7 +508,10 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	res = calculate_table(&csv_table);
-	print_table(&csv_table);
+	if(pretty)
+		print_pretty_table(&csv_table);
+	else
+		print_table(&csv_table);
 	free_table(&csv_table);
 	fclose(csv_file);
 	return res;
