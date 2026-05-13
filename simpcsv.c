@@ -134,7 +134,7 @@ int read_row(struct arr_of_strs *row, struct table *csv_table)
 	int row_size;
 	char **tmp;
 
-	if(!is_num(row->items[0]))
+	if(!is_num(row->items[0]) || row->items[0][0] == '-')
 		return -1;
 	csv_table->nrows++;
 	DA_APPEND(&csv_table->index, row->items[0]);
