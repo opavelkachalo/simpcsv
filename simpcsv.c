@@ -21,6 +21,8 @@
 	(da)->capacity = 0;\
 } while(0)
 
+#define LONG_NUM_LEN 20
+
 enum ops { add, sub, mult, divi };
 
 struct arr_of_strs {
@@ -37,7 +39,7 @@ void free_arr_of_strs(struct arr_of_strs *dstrs)
 }
 
 struct table {
-	int nrows, ncols;
+	int nrows, ncols, *visited;
 	struct arr_of_strs index, header;
 	struct {
 		int size, capacity;
@@ -57,6 +59,7 @@ void free_table(struct table *csv_table)
 		free(csv_table->values.items[i]);
 	}
 	free(csv_table->values.items);
+	free(csv_table->visited);
 }
 
 struct dstr {
@@ -136,12 +139,18 @@ int read_csv(FILE *csv_file, struct table *csv_table, char delim)
 	struct arr_of_strs row;
 
 	DA_ZERO_INIT(&row);
+	res = -1;
 	for(i = 0; (line_str = read_line(csv_file)) != NULL; i++) {
 		split_str(line_str, delim, &row);
 		if(i == 0) { /* first line */
 			res = create_header(&row, csv_table);
 			free(row.items[0]);
 		} else {
+			if(row.size > csv_table->ncols + 1) {
+				free_arr_of_strs(&row);
+				free(line_str);
+				return -1;
+			}
 			res = read_row(&row, csv_table);
 		}
 		free(line_str);
@@ -214,7 +223,6 @@ int find_pos(const char *idx, struct table *csv_table, int *i, int *j)
 	res = split_idx(idx, &col_i, &row_i);
 	if(res == -1)
 		goto cleanup;
-	res = 0;
 	for(x = 0; x < csv_table->nrows; x++) {
 		if(strcmp(csv_table->index.items[x], row_i) == 0) {
 			*i = x;
@@ -235,20 +243,155 @@ cleanup:
 	return res;
 }
 
-void calculate_expr(struct table *csv_table, const char *expr)
+int is_op(char c)
 {
+	return c == '+' || c == '-' || c == '*' || c == '/';
+}
+
+int find_op(const char *str)
+{
+	const char *p;
+
+	for(p = str; *p; p++) {
+		if(is_op(*p))
+			return p - str;
+	}
+	return -1;
+}
+
+int split_expr(const char *expr, char **str1, char *op, char **str2)
+{
+	int op_pos;
+	const char *p;
+
+	op_pos = find_op(expr);
+	/* if 0 or more than 1 operation in expr */
+	if(op_pos == -1 || find_op(expr+op_pos+1) != -1)
+		return -1;
+	*op = expr[op_pos];
+	p = expr;
+	if(*p == '=') {
+		p++;
+		op_pos--;
+	}
+	*str1 = strdup(p);
+	(*str1)[op_pos] = '\0';
+	*str2 = strdup(p + op_pos + 1);
+	return 0;
+}
+
+int calculate_expr(struct table *csv_table, const char *expr, int i, int j);
+
+int find_arg(const char *str, long *arg, struct table *csv_table)
+{
+	int i, j;
+	char *value;
+
+	/* arg is either a number, an address or a gibberish */
+	if(is_num(str)) {
+		*arg = strtol(str, NULL, 10);
+		return 0;
+	}
+	if(find_pos(str, csv_table, &i, &j) == -1)
+		return -1;
+	value = csv_table->values.items[i][j];
+	/* address can point either to a number or to another expression */
+	if(is_num(value)) {
+		*arg = strtol(value, NULL, 10);
+		return 0;
+	}
+	if(*value == '=' && !csv_table->visited[i*csv_table->ncols+j]) {
+		csv_table->visited[i*csv_table->ncols+j] = 1;
+		if(calculate_expr(csv_table, value, i, j) == 0) {
+			value = csv_table->values.items[i][j];
+			*arg = strtol(value, NULL, 10);
+			return 0;
+		}
+	}
+	return -1;
+}
+
+int calculate_expr(struct table *csv_table, const char *expr, int i, int j)
+{
+	char op, *str1, *str2;
+	long arg1, arg2, ans;
+	int res;
+
+	res = 0;
+	if(split_expr(expr, &str1, &op, &str2) == -1) {
+		res = -1;
+		goto cleanup;
+	}
+	if(find_arg(str1, &arg1, csv_table) == -1) {
+		res = -1;
+		goto cleanup;
+	}
+	if(find_arg(str2, &arg2, csv_table) == -1) {
+		res = -1;
+		goto cleanup;
+	}
+	switch(op) {
+	case '+':
+		ans = arg1 + arg2;
+		break;
+	case '-':
+		ans = arg1 - arg2;
+		break;
+	case '*':
+		ans = arg1 * arg2;
+		break;
+	case '/':
+		if(arg2 == 0) {
+			res = -1;
+			goto cleanup;
+		}
+		ans = arg1 / arg2;
+	}
+	free(csv_table->values.items[i][j]);
+	csv_table->values.items[i][j] = malloc(LONG_NUM_LEN *
+				sizeof(*csv_table->values.items[i][j]));
+	sprintf(csv_table->values.items[i][j], "%ld", ans);
+	csv_table->visited[i*csv_table->ncols+j] = 0;
+cleanup:
+	free(str1);
+	free(str2);
+	return res;
 }
 
 void calculate_table(struct table *csv_table)
 {
-	int i, j;
+	int i, j, nrows, ncols;
 	char *cell;
 
-	for(i = 0; i < csv_table->nrows; i++) {
-		for(j = 0; j < csv_table->nrows; j++) {
+	nrows = csv_table->nrows;
+	ncols = csv_table->ncols;
+	csv_table->visited = calloc(csv_table->nrows * csv_table->ncols,
+			sizeof(*csv_table->visited));
+	for(i = 0; i < nrows; i++) {
+		for(j = 0; j < ncols; j++) {
 			cell = csv_table->values.items[i][j];
-			if(*cell == '=')
-				calculate_expr(csv_table, cell);
+			if(*cell == '=' && !csv_table->visited[i*ncols + j]) {
+				csv_table->visited[i*ncols + j] = 1;
+				calculate_expr(csv_table, cell, i, j);
+			}
+		}
+	}
+}
+
+void print_table(struct table *csv_table)
+{
+	int i, j;
+
+	putchar(',');
+	for(i = 0; i < csv_table->ncols; i++) {
+		printf("%s%c", csv_table->header.items[i],
+			i != csv_table->ncols - 1 ? ',' : '\n');
+	}
+	for(i = 0; i < csv_table->nrows; i++) {
+		printf("%s,", csv_table->index.items[i]);
+		for(j = 0; j < csv_table->ncols; j++) {
+			printf("%s%c", csv_table->values.items[i][j],
+				j != csv_table->ncols - 1 ? ',' : '\n');
 		}
 	}
 }
@@ -277,6 +420,8 @@ int main(int argc, char **argv)
 		fclose(csv_file);
 		return 1;
 	}
+	calculate_table(&csv_table);
+	print_table(&csv_table);
 	free_table(&csv_table);
 	fclose(csv_file);
 	return 0;
