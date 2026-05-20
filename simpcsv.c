@@ -21,7 +21,7 @@
 	(da)->capacity = 0;\
 } while(0)
 
-#define LONG_NUM_LEN 21
+#define LONG_NUM_LEN 22 /* sign + digit_cnt + '\0' = 1 + 20 + 1 = 22 */
 
 struct arr_of_strs {
 	int size, capacity;
@@ -121,7 +121,7 @@ int is_num(const char *str)
 	const char *p;
 
 	p = str;
-	if(*p == '-')
+	if(*p == '-' || *p == '+')
 		p = str + 1;
 	for(; *p; p++)
 		if(*p < '0' || *p > '9')
@@ -248,7 +248,7 @@ cleanup:
 
 int is_op(char c)
 {
-	return c == '+' || c == '-' || c == '*' || c == '/';
+	return c == '+' || c == '-' || c == '*' || c == '/' || c == '%';
 }
 
 int find_op(const char *str)
@@ -333,6 +333,10 @@ int calculate_expr(struct table *csv_table, const char *expr, int i, int j)
 		res = -1;
 		goto cleanup;
 	}
+	if((op == '/' || op == '%') && arg2 == 0) {
+		res = -1;
+		goto cleanup;
+	}
 	switch(op) {
 	case '+':
 		ans = arg1 + arg2;
@@ -344,11 +348,10 @@ int calculate_expr(struct table *csv_table, const char *expr, int i, int j)
 		ans = arg1 * arg2;
 		break;
 	case '/':
-		if(arg2 == 0) {
-			res = -1;
-			goto cleanup;
-		}
 		ans = arg1 / arg2;
+                break;
+	case '%':
+		ans = arg1 % arg2;
 	}
 	free(csv_table->values.items[i][j]);
 	csv_table->values.items[i][j] = malloc(LONG_NUM_LEN *
@@ -504,15 +507,14 @@ int main(int argc, char **argv)
 	res = read_csv(csv_file, &csv_table, ',');
 	if(res == -1) {
 		print_entire_file(csv_file);
-		fclose(csv_file);
 		return 1;
 	}
+	fclose(csv_file);
 	res = calculate_table(&csv_table);
 	if(pretty)
 		print_pretty_table(&csv_table);
 	else
 		print_table(&csv_table);
 	free_table(&csv_table);
-	fclose(csv_file);
 	return res;
 }

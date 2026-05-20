@@ -41,5 +41,3 @@ echo failed $n_fail tests
 if [ -e tmp ]; then
 	rm tmp
 fi
-
-cd - &>/dev/null
