@@ -318,15 +318,24 @@ int calculate_expr(struct table *csv_table, const char *expr, int i, int j)
 {
 	char op, *str1, *str2;
 	long arg1, arg2, ans;
-	int res, res1, res2, res3;
+	int res;
 
+	str1 = NULL;
+	str2 = NULL;
 	res = 0;
-	res1 = split_expr(expr, &str1, &op, &str2);
-	res2 = find_arg(str1, &arg1, csv_table);
-	res3 = find_arg(str2, &arg2, csv_table);
-	if(res1 == -1 || res2 == -1 || res3 == -1
-			|| ((op == '/' || op == '%') && arg2 == 0))
-	{
+	if(split_expr(expr, &str1, &op, &str2) == -1) {
+		res = -1;
+		goto cleanup;
+	}
+	if(find_arg(str1, &arg1, csv_table) == -1) {
+		res = -1;
+		goto cleanup;
+	}
+	if(find_arg(str2, &arg2, csv_table) == -1) {
+		res = -1;
+		goto cleanup;
+	}
+	if((op == '/' || op == '%') && arg2 == 0) {
 		res = -1;
 		goto cleanup;
 	}
