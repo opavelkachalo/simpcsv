@@ -314,6 +314,31 @@ int find_arg(const char *str, long *arg, struct table *csv_table)
 	return -1;
 }
 
+int calculate(long *arg1, char op, long *arg2, long *ans)
+{
+	switch(op) {
+	case '+':
+		*ans = *arg1 + *arg2;
+		break;
+	case '-':
+		*ans = *arg1 - *arg2;
+		break;
+	case '*':
+		*ans = *arg1 * *arg2;
+		break;
+	case '/':
+		if(*arg2 == 0)
+			return -1;
+		*ans = *arg1 / *arg2;
+		break;
+	case '%':
+		if(*arg2 == 0)
+			return -1;
+		*ans = *arg1 % *arg2;
+	}
+	return 0;
+}
+
 int calculate_expr(struct table *csv_table, const char *expr, int i, int j)
 {
 	char op, *str1, *str2;
@@ -323,38 +348,18 @@ int calculate_expr(struct table *csv_table, const char *expr, int i, int j)
 	str1 = NULL;
 	str2 = NULL;
 	res = 0;
-	if(split_expr(expr, &str1, &op, &str2) == -1) {
-		res = -1;
+	res = split_expr(expr, &str1, &op, &str2);
+	if(res == -1)
 		goto cleanup;
-	}
-	if(find_arg(str1, &arg1, csv_table) == -1) {
-		res = -1;
+	res = find_arg(str1, &arg1, csv_table);
+	if(res == -1)
 		goto cleanup;
-	}
-	if(find_arg(str2, &arg2, csv_table) == -1) {
-		res = -1;
+	res = find_arg(str2, &arg2, csv_table);
+	if(res == -1)
 		goto cleanup;
-	}
-	if((op == '/' || op == '%') && arg2 == 0) {
-		res = -1;
+	res = calculate(&arg1, op, &arg2, &ans);
+	if(res == -1)
 		goto cleanup;
-	}
-	switch(op) {
-	case '+':
-		ans = arg1 + arg2;
-		break;
-	case '-':
-		ans = arg1 - arg2;
-		break;
-	case '*':
-		ans = arg1 * arg2;
-		break;
-	case '/':
-		ans = arg1 / arg2;
-		break;
-	case '%':
-		ans = arg1 % arg2;
-	}
 	free(csv_table->values.items[i][j]);
 	csv_table->values.items[i][j] = malloc(LONG_NUM_LEN *
 				sizeof(*csv_table->values.items[i][j]));
