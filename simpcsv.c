@@ -147,17 +147,19 @@ int read_row(struct arr_of_strs *row, struct table *csv_table)
 
 int read_csv(FILE *csv_file, struct table *csv_table, char delim)
 {
-	int i, res;
+	int res, is_first_line;
 	char *line_str;
 	struct arr_of_strs row;
 
 	DA_ZERO_INIT(&row);
 	res = -1;
-	for(i = 0; (line_str = read_line(csv_file)) != NULL; i++) {
+	is_first_line = 1;
+	while((line_str = read_line(csv_file)) != NULL) {
 		split_str(line_str, delim, &row);
-		if(i == 0) { /* first line */
+		if(is_first_line) {
 			res = create_header(&row, csv_table);
 			free(row.items[0]);
+			is_first_line = 0;
 		} else {
 			if(row.size != csv_table->ncols + 1) {
 				free_arr_of_strs(&row);
@@ -347,7 +349,6 @@ int calculate_expr(struct table *csv_table, const char *expr, int i, int j)
 
 	str1 = NULL;
 	str2 = NULL;
-	res = 0;
 	res = split_expr(expr, &str1, &op, &str2);
 	if(res == -1)
 		goto cleanup;
@@ -360,8 +361,9 @@ int calculate_expr(struct table *csv_table, const char *expr, int i, int j)
 	res = calculate(&arg1, op, &arg2, &ans);
 	if(res == -1)
 		goto cleanup;
-	free(csv_table->values.items[i][j]);
-	csv_table->values.items[i][j] = malloc(LONG_NUM_LEN *
+	csv_table->values.items[i][j] = realloc(
+				csv_table->values.items[i][j],
+				LONG_NUM_LEN *
 				sizeof(*csv_table->values.items[i][j]));
 	sprintf(csv_table->values.items[i][j], "%ld", ans);
 	csv_table->visited[i*csv_table->ncols+j] = 0;
